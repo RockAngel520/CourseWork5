@@ -30,6 +30,8 @@ DATABASE_PASSWORD=habits_password
 DATABASE_HOST=db
 DATABASE_PORT=5432
 TG_API_KEY=your-telegram-bot-token
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
 ```
 
 ### 2. Запуск проекта
