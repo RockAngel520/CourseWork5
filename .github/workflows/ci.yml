@@ -26,8 +26,7 @@ jobs:
             poetry install --no-interaction --no-root
 
         - name: Run tests
-          run: |
-            poetry run python manage.py test
+          run: python manage.py test
 
   build:
     needs: test
