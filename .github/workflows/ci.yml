@@ -25,8 +25,17 @@ jobs:
             poetry config virtualenvs.create false
             poetry install --no-interaction --no-root
 
-        - name: Run tests
-          run: python manage.py test
+        - name: Create test settings
+          run: |
+            cat > test_settings.py << EOF
+            from .settings import *
+
+            SECRET_KEY = 'test-secret-key-${{ github.run_id }}'
+            DEBUG = True
+
+        - name: Run tests with custom settings
+          run: |
+            poetry run python manage.py test --settings=test_settings
 
   build:
     needs: test
