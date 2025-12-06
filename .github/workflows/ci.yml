@@ -27,10 +27,10 @@ jobs:
 
         - name: Create test settings
           run: |
-            cat > test_settings.py << EOF
-            from .settings import *
+            cat > test_settings.py << 'EOF'
+            from config.settings import *
 
-            SECRET_KEY = 'test-secret-key-${{ github.run_id }}'
+            SECRET_KEY = 'test-secret-key-for-ci'
             DEBUG = True
 
         - name: Run tests with custom settings
