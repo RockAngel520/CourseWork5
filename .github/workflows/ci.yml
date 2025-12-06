@@ -66,9 +66,13 @@ jobs:
 
     - name: Deploy to Server
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          docker stop myapp || true
-          docker rm myapp || true
-          docker run -d --name myapp -p 80:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-          EOF
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} \
+            "docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} && \
+             docker stop myapp 2>/dev/null || true && \
+             docker rm myapp 2>/dev/null || true && \
+             docker run -d --name myapp -p 80:8000 \
+               -e DATABASE_URL='${{ secrets.PROD_DATABASE_URL }}' \
+               -e DJANGO_SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}' \
+               -e DJANGO_DEBUG='${{ secrets.DJANGO_DEBUG }}' \
+               ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} && \
+             docker image prune -f"
