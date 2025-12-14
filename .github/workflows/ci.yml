@@ -123,35 +123,62 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
+      - name: Set up Docker
+        run: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sudo sh get-docker.sh
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
+
       - name: Log in to Docker Hub
         run: echo ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }} .
+        run: |
+          docker compose -f docker-compose.yaml build
 
-      - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          docker tag coursework5-web:latest ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          docker tag coursework5-web:latest ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:latest
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
 
     steps:
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_KEY }}
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
 
-    - name: Deploy to Server
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-          cd /home/anton/CourseWork5
-        
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/myapp:${{ github.sha }}
-        
-          docker-compose down
-          docker-compose up -d
-        
-          sleep 5
-          docker-compose ps
-        "
+      - name: Prepare environment on server
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd /home/anton/CourseWork5
+            cat > .env << 'EOF'
+            SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            DEBUG=${{ secrets.DJANGO_DEBUG }}
+            DATABASE_NAME=${{ secrets.DATABASE_NAME }}
+            DATABASE_USER=${{ secrets.DATABASE_USER }}
+            DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+            DATABASE_HOST=db
+            DATABASE_PORT=5432
+            CELERY_BROKER_URL=redis://redis:6379/0
+            CELERY_RESULT_BACKEND=redis://redis:6379/0
+            EOF
+          "
+      - name: Deploy application
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd /home/anton/CourseWork5
+            docker-compose pull || true
+            docker-compose down
+            docker-compose up -d --build
+            sleep 10
+            docker-compose ps
+            echo 'Application logs:'
+            docker-compose logs --tail=20
+          "
