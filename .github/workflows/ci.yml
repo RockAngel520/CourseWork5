@@ -1,9 +1,30 @@
-name: Django CI
+name: Django CI/CD Pipeline
 
 on: [push, pull_request]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Check out code
+          uses: actions/checkout@v3
+
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: '3.13'
+
+        - name: Install dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install flake8
+
+        - name: Run Flake8
+          run: flake8 --exclude=users/migrations .
+
   test:
+    needs: lint
     runs-on: ubuntu-latest
 
     steps:
@@ -32,13 +53,38 @@ jobs:
 
             SECRET_KEY = 'test-secret-key-for-ci'
             DEBUG = True
+            
+            class DisableMigrations:
+              def __contains__(self, item):
+                return True
+              def __getitem__(self, item):
+                return None
+
+            MIGRATION_MODULES = DisableMigrations()
+            EOF
 
         - name: Run tests with custom settings
-          run: |
-            poetry run python manage.py test --settings=test_settings
+          run: poetry run python manage.py test --settings=test_settings
+
+  docker-build-test:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Test docker-compose.yaml
+        run: docker-compose config
+
+      - name: Build Docker images
+        run: docker-compose build
 
   build:
-    needs: test
+    needs: docker-build-test
     runs-on: ubuntu-latest
 
     steps:
