@@ -100,10 +100,10 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Validate docker-compose.yaml
-        run: docker compose --env-file '' config
+        run: docker compose -f docker-compose.yaml --env-file '' config
 
       - name: Build Docker images
-        run: docker compose --env-file '' build
+        run: docker compose -f docker-compose.yaml --env-file '' build
 
   build:
     needs: docker-build-test
