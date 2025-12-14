@@ -78,10 +78,12 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Test docker-compose.yaml
-        run: docker-compose config
+        run: |
+          docker-compose config
 
       - name: Build Docker images
-        run: docker-compose build
+        run: |
+          docker-compose build
 
   build:
     needs: docker-build-test
